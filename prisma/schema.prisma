@@ -1,0 +1,35 @@
+// Prisma 7 — custom client generated into ../generated/prisma (gitignored).
+// Run `pnpm prisma generate` after any change to this file.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// Naming convention: model = camelCase singular, @@map = snake_case plural.
+// Example model — replace/extend with the real billing domain.
+
+model invoice {
+  id        Int           @id @default(autoincrement())
+  number    String        @unique
+  amount    Int
+  currency  String        @default("USD")
+  status    invoiceStatus @default(draft)
+  createdAt DateTime      @default(now()) @map("created_at")
+  updatedAt DateTime      @updatedAt @map("updated_at")
+
+  @@map("invoices")
+}
+
+enum invoiceStatus {
+  draft
+  pending
+  paid
+  cancelled
+
+  @@map("invoice_statuses")
+}
