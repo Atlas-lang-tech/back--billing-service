@@ -1,5 +1,7 @@
 // Prisma 7 — custom client generated into ../generated/prisma (gitignored).
 // Run `pnpm prisma generate` after any change to this file.
+//
+// Naming convention: model = camelCase singular, @@map = snake_case plural.
 
 generator client {
   provider = "prisma-client"
@@ -10,26 +12,60 @@ datasource db {
   provider = "postgresql"
 }
 
-// Naming convention: model = camelCase singular, @@map = snake_case plural.
-// Example model — replace/extend with the real billing domain.
+// Catalog of plans — single source of truth for limits and price.
+// Published to other services via `plan.upserted`.
+model plan {
+  code            String  @id
+  name            String
+  maxDictionaries Int     @map("max_dictionaries")
+  maxWordsPerDict Int     @map("max_words_per_dict")
+  priceCents      Int     @map("price_cents")
+  isActive        Boolean @default(true) @map("is_active")
 
-model invoice {
-  id        Int           @id @default(autoincrement())
-  number    String        @unique
-  amount    Int
-  currency  String        @default("USD")
-  status    invoiceStatus @default(draft)
-  createdAt DateTime      @default(now()) @map("created_at")
-  updatedAt DateTime      @updatedAt @map("updated_at")
-
-  @@map("invoices")
+  @@map("plans")
 }
 
-enum invoiceStatus {
-  draft
-  pending
-  paid
-  cancelled
+// A user's current plan. Bootstrapped to FREE on `user.registered`.
+model userSubscription {
+  userId    String             @id @map("user_id")
+  planCode  String             @map("plan_code")
+  status    subscriptionStatus @default(active)
+  startedAt DateTime           @default(now()) @map("started_at")
+  // When the current plan ends. null = perpetual (e.g. FREE).
+  expiresAt DateTime?          @map("expires_at")
 
-  @@map("invoice_statuses")
+  @@map("user_subscriptions")
+}
+
+// Read-model of a course as a sellable product. Seeded as a draft
+// (isActive=false) from `course.upserted` until an admin sets a price.
+model product {
+  courseId   Int     @id @map("course_id")
+  title      String
+  priceCents Int?    @map("price_cents")
+  currency   String  @default("USD")
+  isFree     Boolean @default(false) @map("is_free")
+  isActive   Boolean @default(false) @map("is_active")
+
+  @@map("products")
+}
+
+// A lifetime course purchase — existence of the row grants access.
+model coursePurchase {
+  id          Int      @id @default(autoincrement())
+  userId      String   @map("user_id")
+  courseId    Int      @map("course_id")
+  priceCents  Int      @map("price_cents")
+  purchasedAt DateTime @default(now()) @map("purchased_at")
+
+  @@unique([userId, courseId])
+  @@map("course_purchases")
+}
+
+enum subscriptionStatus {
+  active
+  canceled
+  past_due
+
+  @@map("subscription_statuses")
 }

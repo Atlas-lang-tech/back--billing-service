@@ -13,6 +13,9 @@ export class EnvironmentVariables {
   DATABASE_URL: string;
 
   @IsString()
+  RABBITMQ_URL: string;
+
+  @IsString()
   REDIS_HOST: string;
 
   @IsNumber()

@@ -4,8 +4,8 @@ import { createMockPrisma, createMockRedis } from './mocks.js';
 describe('testing mocks', () => {
   it('createMockPrisma exposes CRUD jest.fn per model', () => {
     const prisma = createMockPrisma();
-    expect(jest.isMockFunction(prisma.invoice.findMany)).toBe(true);
-    expect(jest.isMockFunction(prisma.invoice.create)).toBe(true);
+    expect(jest.isMockFunction(prisma.plan.findMany)).toBe(true);
+    expect(jest.isMockFunction(prisma.coursePurchase.create)).toBe(true);
   });
 
   it('createMockPrisma.$transaction runs a callback inline', async () => {

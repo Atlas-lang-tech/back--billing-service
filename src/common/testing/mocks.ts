@@ -6,8 +6,11 @@ type ModelMock = {
   findMany: jest.Mock;
   create: jest.Mock;
   update: jest.Mock;
+  updateMany: jest.Mock;
+  upsert: jest.Mock;
   delete: jest.Mock;
   deleteMany: jest.Mock;
+  count: jest.Mock;
 };
 
 function createModelMock(): ModelMock {
@@ -17,8 +20,11 @@ function createModelMock(): ModelMock {
     findMany: jest.fn(),
     create: jest.fn(),
     update: jest.fn(),
+    updateMany: jest.fn(),
+    upsert: jest.fn(),
     delete: jest.fn(),
     deleteMany: jest.fn(),
+    count: jest.fn(),
   };
 }
 
@@ -30,7 +36,10 @@ function createModelMock(): ModelMock {
  */
 export function createMockPrisma() {
   return {
-    invoice: createModelMock(),
+    plan: createModelMock(),
+    userSubscription: createModelMock(),
+    product: createModelMock(),
+    coursePurchase: createModelMock(),
     $transaction: jest.fn((arg: unknown) => {
       if (typeof arg === 'function') {
         return (arg as (tx: unknown) => unknown)(createMockPrisma());

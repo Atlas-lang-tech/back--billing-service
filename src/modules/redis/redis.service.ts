@@ -1,5 +1,5 @@
 import { Injectable, OnModuleDestroy } from '@nestjs/common';
-import Redis from 'ioredis';
+import { Redis } from 'ioredis';
 
 @Injectable()
 export class RedisService implements OnModuleDestroy {
@@ -24,6 +24,16 @@ export class RedisService implements OnModuleDestroy {
     } else {
       await this.client.set(key, value);
     }
+  }
+
+  /**
+   * Atomically set a key only if it does not already exist (`SET NX EX`).
+   * Returns true if the key was set (first writer), false if it already
+   * existed — used for idempotent event processing.
+   */
+  async setNx(key: string, value: string, ttl: number): Promise<boolean> {
+    const result = await this.client.set(key, value, 'EX', ttl, 'NX');
+    return result === 'OK';
   }
 
   async del(key: string): Promise<void> {
