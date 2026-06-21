@@ -9,6 +9,7 @@ import { Request } from 'express';
 export interface UserContext {
   id: string;
   role: string;
+  plan: string;
 }
 
 declare module 'express' {
@@ -19,9 +20,10 @@ declare module 'express' {
 
 /**
  * Reads identity from headers set by Traefik ForwardAuth (`X-User-Id`,
- * `X-User-Role`) and attaches `request.user`. Applied to private routes only —
- * the gateway guarantees the header is present after auth, so a missing
- * `X-User-Id` means the request bypassed the gateway → 401.
+ * `X-User-Role`, `X-User-Plan`) and attaches `request.user`. Applied to private
+ * routes only — the gateway guarantees the header is present after auth, so a
+ * missing `X-User-Id` means the request bypassed the gateway → 401. Role/plan
+ * fall back to sane defaults.
  */
 @Injectable()
 export class UserContextGuard implements CanActivate {
@@ -36,6 +38,7 @@ export class UserContextGuard implements CanActivate {
     request.user = {
       id,
       role: request.header('x-user-role') ?? 'USER',
+      plan: request.header('x-user-plan') ?? 'FREE',
     };
 
     return true;

@@ -9,12 +9,13 @@ import {
 import { Roles } from '../common/auth/roles.decorator.js';
 import { RolesGuard } from '../common/auth/roles.guard.js';
 import { UserContextGuard } from '../common/auth/user-context.guard.js';
+import { Role } from '../common/auth/roles.js';
 import { SetProductPriceDto } from './dto/set-product-price.dto.js';
 import { ProductService } from './product.service.js';
 
 @Controller('private/admin/products')
 @UseGuards(UserContextGuard, RolesGuard)
-@Roles(['ADMIN'])
+@Roles([Role.ADMIN])
 export class ProductAdminController {
   constructor(private readonly productService: ProductService) {}
 

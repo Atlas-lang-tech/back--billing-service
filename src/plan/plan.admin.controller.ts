@@ -10,12 +10,13 @@ import {
 import { Roles } from '../common/auth/roles.decorator.js';
 import { RolesGuard } from '../common/auth/roles.guard.js';
 import { UserContextGuard } from '../common/auth/user-context.guard.js';
+import { Role } from '../common/auth/roles.js';
 import { UpdatePlanDto, UpsertPlanDto } from './dto/upsert-plan.dto.js';
 import { PlanService } from './plan.service.js';
 
 @Controller('private/admin/plans')
 @UseGuards(UserContextGuard, RolesGuard)
-@Roles(['ADMIN'])
+@Roles([Role.ADMIN])
 export class PlanAdminController {
   constructor(private readonly planService: PlanService) {}
 

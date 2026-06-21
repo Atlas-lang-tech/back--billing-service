@@ -2,12 +2,13 @@ import { Body, Controller, Param, Put, UseGuards } from '@nestjs/common';
 import { Roles } from '../common/auth/roles.decorator.js';
 import { RolesGuard } from '../common/auth/roles.guard.js';
 import { UserContextGuard } from '../common/auth/user-context.guard.js';
+import { Role } from '../common/auth/roles.js';
 import { GrantSubscriptionDto } from './dto/grant-subscription.dto.js';
 import { SubscriptionService } from './subscription.service.js';
 
 @Controller('private/admin/subscriptions')
 @UseGuards(UserContextGuard, RolesGuard)
-@Roles(['ADMIN'])
+@Roles([Role.ADMIN])
 export class SubscriptionAdminController {
   constructor(private readonly subscriptionService: SubscriptionService) {}
 
