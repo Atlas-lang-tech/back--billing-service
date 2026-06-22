@@ -71,6 +71,64 @@ describe('ProductService', () => {
     await expect(service.findOne(99)).rejects.toBeInstanceOf(NotFoundException);
   });
 
+  it('findAllActive serves cache when present', async () => {
+    const { db, cache, service } = setup();
+    const products = [{ courseId: 1, isActive: true }];
+    cache.get.mockResolvedValue(JSON.stringify(products));
+
+    const result = await service.findAllActive();
+
+    expect(result).toEqual(products);
+    expect(db.product.findMany).not.toHaveBeenCalled();
+  });
+
+  it('findAllActive falls through to the DB and caches on a miss', async () => {
+    const { db, cache, service } = setup();
+    cache.get.mockResolvedValue(null);
+    const products = [{ courseId: 1, isActive: true }];
+    db.product.findMany.mockResolvedValue(products);
+
+    const result = await service.findAllActive();
+
+    expect(result).toEqual(products);
+    expect(db.product.findMany).toHaveBeenCalledWith({
+      where: { isActive: true },
+    });
+    expect(cache.set).toHaveBeenCalledWith(
+      'product:active',
+      JSON.stringify(products),
+      3600,
+    );
+  });
+
+  it('setPrice updates the product and invalidates cache', async () => {
+    const { db, cache, service } = setup();
+    const existing = { courseId: 1, currency: 'USD', priceCents: null };
+    db.product.findUnique.mockResolvedValue(existing);
+    db.product.update.mockResolvedValue({ ...existing, priceCents: 700 });
+
+    const result = await service.setPrice(1, { priceCents: 700 } as any);
+
+    expect(result.priceCents).toBe(700);
+    expect(db.product.update).toHaveBeenCalledWith({
+      where: { courseId: 1 },
+      // currency falls back to the existing value; isActive defaults to true.
+      data: { priceCents: 700, currency: 'USD', isActive: true },
+    });
+    expect(cache.del).toHaveBeenCalledWith('product:active');
+    expect(cache.del).toHaveBeenCalledWith('product:1');
+  });
+
+  it('setPrice throws NotFound for an unknown product', async () => {
+    const { db, service } = setup();
+    db.product.findUnique.mockResolvedValue(null);
+
+    await expect(
+      service.setPrice(99, { priceCents: 100 } as any),
+    ).rejects.toBeInstanceOf(NotFoundException);
+    expect(db.product.update).not.toHaveBeenCalled();
+  });
+
   it('onCourseDeleted deactivates the product', async () => {
     const { db, service } = setup();
 

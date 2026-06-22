@@ -80,6 +80,47 @@ describe('PlanService', () => {
     );
   });
 
+  it('update persists, invalidates cache and publishes plan.upserted', async () => {
+    const { db, cache, events, service } = setup();
+    const updated = { ...FREE, priceCents: 999 };
+    db.plan.findUnique.mockResolvedValue(FREE);
+    db.plan.update.mockResolvedValue(updated);
+
+    const result = await service.update('FREE', updated as any);
+
+    expect(result).toEqual(updated);
+    expect(db.plan.update).toHaveBeenCalledWith({
+      where: { code: 'FREE' },
+      data: updated,
+    });
+    expect(cache.del).toHaveBeenCalledWith('plan:active');
+    expect(cache.del).toHaveBeenCalledWith('plan:FREE');
+    expect(events.planUpserted).toHaveBeenCalledWith(
+      expect.objectContaining({ code: 'FREE', priceCents: 999 }),
+    );
+  });
+
+  it('delete removes the plan and invalidates cache', async () => {
+    const { db, cache, service } = setup();
+    db.plan.findUnique.mockResolvedValue(FREE);
+
+    await service.delete('FREE');
+
+    expect(db.plan.delete).toHaveBeenCalledWith({ where: { code: 'FREE' } });
+    expect(cache.del).toHaveBeenCalledWith('plan:active');
+    expect(cache.del).toHaveBeenCalledWith('plan:FREE');
+  });
+
+  it('delete throws NotFound for unknown plan', async () => {
+    const { db, service } = setup();
+    db.plan.findUnique.mockResolvedValue(null);
+
+    await expect(service.delete('NOPE')).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
+    expect(db.plan.delete).not.toHaveBeenCalled();
+  });
+
   it('findAllActive serves cache when present', async () => {
     const { db, cache, service } = setup();
     cache.get.mockResolvedValue(JSON.stringify([FREE]));
@@ -88,5 +129,23 @@ describe('PlanService', () => {
 
     expect(result).toEqual([FREE]);
     expect(db.plan.findMany).not.toHaveBeenCalled();
+  });
+
+  it('findAllActive falls through to the DB and caches on a miss', async () => {
+    const { db, cache, service } = setup();
+    cache.get.mockResolvedValue(null);
+    db.plan.findMany.mockResolvedValue([FREE]);
+
+    const result = await service.findAllActive();
+
+    expect(result).toEqual([FREE]);
+    expect(db.plan.findMany).toHaveBeenCalledWith({
+      where: { isActive: true },
+    });
+    expect(cache.set).toHaveBeenCalledWith(
+      'plan:active',
+      JSON.stringify([FREE]),
+      3600,
+    );
   });
 });

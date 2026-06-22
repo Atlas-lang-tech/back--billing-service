@@ -1,4 +1,5 @@
 import { describe, expect, it, jest } from '@jest/globals';
+import { NotFoundException } from '@nestjs/common';
 import type { ConsumeMessage } from 'amqplib';
 import { createMockPrisma, createMockRedis } from '../common/testing/mocks.js';
 import { SubscriptionService } from './subscription.service.js';
@@ -72,5 +73,56 @@ describe('SubscriptionService', () => {
       userId: 'u1',
       planCode: 'PRO',
     });
+  });
+
+  it('grant throws NotFound for an unknown plan', async () => {
+    const { db, events, service } = setup();
+    db.plan.findUnique.mockResolvedValue(null);
+
+    await expect(
+      service.grant('u1', { planCode: 'NOPE' }),
+    ).rejects.toBeInstanceOf(NotFoundException);
+    expect(db.userSubscription.upsert).not.toHaveBeenCalled();
+    expect(events.subscriptionChanged).not.toHaveBeenCalled();
+  });
+
+  it('getForUser serves cache when present', async () => {
+    const { db, cache, service } = setup();
+    const sub = { userId: 'u1', planCode: 'PRO' };
+    cache.get.mockResolvedValue(JSON.stringify(sub));
+
+    const result = await service.getForUser('u1');
+
+    expect(result).toEqual(sub);
+    expect(db.userSubscription.findUnique).not.toHaveBeenCalled();
+  });
+
+  it('getForUser falls through to the DB and caches on a miss', async () => {
+    const { db, cache, service } = setup();
+    cache.get.mockResolvedValue(null);
+    const sub = { userId: 'u1', planCode: 'PRO' };
+    db.userSubscription.findUnique.mockResolvedValue(sub);
+
+    const result = await service.getForUser('u1');
+
+    expect(result).toEqual(sub);
+    expect(db.userSubscription.findUnique).toHaveBeenCalledWith({
+      where: { userId: 'u1' },
+    });
+    expect(cache.set).toHaveBeenCalledWith(
+      'subscription:u1',
+      JSON.stringify(sub),
+      3600,
+    );
+  });
+
+  it('getForUser throws NotFound when the subscription is absent', async () => {
+    const { db, cache, service } = setup();
+    cache.get.mockResolvedValue(null);
+    db.userSubscription.findUnique.mockResolvedValue(null);
+
+    await expect(service.getForUser('u1')).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
   });
 });

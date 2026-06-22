@@ -57,6 +57,7 @@ export function createMockRedis() {
   return {
     get: jest.fn(async () => null),
     set: jest.fn(async () => undefined),
+    setNx: jest.fn(async () => true),
     del: jest.fn(async () => undefined),
     exists: jest.fn(async () => false),
     expire: jest.fn(async () => undefined),

@@ -1,5 +1,9 @@
 import { describe, expect, it, jest } from '@jest/globals';
-import { ConflictException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import { createMockPrisma } from '../common/testing/mocks.js';
 import { PurchaseService } from './purchase.service.js';
 
@@ -59,6 +63,61 @@ describe('PurchaseService', () => {
       ConflictException,
     );
     expect(payment.charge).not.toHaveBeenCalled();
+  });
+
+  it('throws NotFound when the course is missing or inactive', async () => {
+    const { db, service } = setup();
+    db.product.findUnique.mockResolvedValue({ ...PAID_PRODUCT, isActive: false });
+
+    await expect(service.purchaseCourse(USER, 1)).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
+  });
+
+  it('throws BadRequest for a free course', async () => {
+    const { db, service } = setup();
+    db.product.findUnique.mockResolvedValue({ ...PAID_PRODUCT, isFree: true });
+
+    await expect(service.purchaseCourse(USER, 1)).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
+  });
+
+  it('throws BadRequest when the course is not priced yet', async () => {
+    const { db, service } = setup();
+    db.product.findUnique.mockResolvedValue({
+      ...PAID_PRODUCT,
+      priceCents: null,
+    });
+
+    await expect(service.purchaseCourse(USER, 1)).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
+  });
+
+  it('throws BadRequest and records nothing when payment fails', async () => {
+    const { db, events, service } = setup(false);
+    db.product.findUnique.mockResolvedValue(PAID_PRODUCT);
+    db.coursePurchase.findUnique.mockResolvedValue(null);
+
+    await expect(service.purchaseCourse(USER, 1)).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
+    expect(db.coursePurchase.create).not.toHaveBeenCalled();
+    expect(events.coursePurchased).not.toHaveBeenCalled();
+  });
+
+  it('myPurchases lists the user own purchases', async () => {
+    const { db, service } = setup();
+    const purchases = [{ id: 1, userId: 'u1', courseId: 1 }];
+    db.coursePurchase.findMany.mockResolvedValue(purchases);
+
+    const result = await service.myPurchases('u1');
+
+    expect(result).toEqual(purchases);
+    expect(db.coursePurchase.findMany).toHaveBeenCalledWith({
+      where: { userId: 'u1' },
+    });
   });
 
   it('access: admin always has access', async () => {
