@@ -1,5 +1,11 @@
 import { IsBoolean, IsInt, IsOptional, IsString, Min } from 'class-validator';
 
+// Toggles only the plan's active flag, without touching limits or price.
+export class SetPlanActiveDto {
+  @IsBoolean()
+  isActive!: boolean;
+}
+
 export class UpsertPlanDto {
   @IsString()
   code!: string;

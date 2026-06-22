@@ -74,6 +74,22 @@ export class PlanService {
     return updated;
   }
 
+  async setActive(code: string, isActive: boolean) {
+    const plan = await this.db.plan.findUnique({ where: { code } });
+    if (!plan) {
+      throw new NotFoundException('Plan not found');
+    }
+
+    const updated = await this.db.plan.update({
+      where: { code },
+      data: { isActive },
+    });
+
+    await this.invalidate(code);
+    await this.announce(updated);
+    return updated;
+  }
+
   async delete(code: string): Promise<void> {
     const plan = await this.db.plan.findUnique({ where: { code } });
     if (!plan) {

@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Param,
+  Patch,
   Post,
   Put,
   UseGuards,
@@ -11,7 +12,11 @@ import { Roles } from '../common/auth/roles.decorator.js';
 import { RolesGuard } from '../common/auth/roles.guard.js';
 import { UserContextGuard } from '../common/auth/user-context.guard.js';
 import { Role } from '../common/auth/roles.js';
-import { UpdatePlanDto, UpsertPlanDto } from './dto/upsert-plan.dto.js';
+import {
+  SetPlanActiveDto,
+  UpdatePlanDto,
+  UpsertPlanDto,
+} from './dto/upsert-plan.dto.js';
 import { PlanService } from './plan.service.js';
 
 @Controller('private/admin/plans')
@@ -28,6 +33,11 @@ export class PlanAdminController {
   @Put(':code')
   updatePlan(@Param('code') code: string, @Body() dto: UpdatePlanDto) {
     return this.planService.update(code, dto);
+  }
+
+  @Patch(':code/active')
+  setPlanActive(@Param('code') code: string, @Body() dto: SetPlanActiveDto) {
+    return this.planService.setActive(code, dto.isActive);
   }
 
   @Delete(':code')

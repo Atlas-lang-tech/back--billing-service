@@ -53,6 +53,33 @@ describe('PlanService', () => {
     ).rejects.toBeInstanceOf(NotFoundException);
   });
 
+  it('setActive flips the flag, invalidates cache and publishes plan.upserted', async () => {
+    const { db, cache, events, service } = setup();
+    db.plan.findUnique.mockResolvedValue(FREE);
+    db.plan.update.mockResolvedValue({ ...FREE, isActive: false });
+
+    const result = await service.setActive('FREE', false);
+
+    expect(result.isActive).toBe(false);
+    expect(db.plan.update).toHaveBeenCalledWith({
+      where: { code: 'FREE' },
+      data: { isActive: false },
+    });
+    expect(cache.del).toHaveBeenCalledWith('plan:active');
+    expect(events.planUpserted).toHaveBeenCalledWith(
+      expect.objectContaining({ code: 'FREE' }),
+    );
+  });
+
+  it('setActive throws NotFound for unknown plan', async () => {
+    const { db, service } = setup();
+    db.plan.findUnique.mockResolvedValue(null);
+
+    await expect(service.setActive('NOPE', true)).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
+  });
+
   it('findAllActive serves cache when present', async () => {
     const { db, cache, service } = setup();
     cache.get.mockResolvedValue(JSON.stringify([FREE]));
