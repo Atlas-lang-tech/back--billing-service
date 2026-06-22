@@ -34,5 +34,5 @@ COPY --from=builder /app/prisma.config.ts ./prisma.config.ts
 
 EXPOSE 3000
 
-# Apply migrations on container start, then run the service.
-CMD ["sh", "-c", "npx prisma migrate deploy && pnpm start:prod"]
+# Apply migrations, seed baseline data (idempotent upsert), then run the service.
+CMD ["sh", "-c", "npx prisma migrate deploy && npx prisma db seed && pnpm start:prod"]
