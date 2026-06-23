@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Delete,
+  Get,
   Param,
   Patch,
   Post,
@@ -24,6 +25,11 @@ import { PlanService } from './plan.service.js';
 @Roles([Role.ADMIN])
 export class PlanAdminController {
   constructor(private readonly planService: PlanService) {}
+
+  @Get()
+  getPlans() {
+    return this.planService.findAll();
+  }
 
   @Post()
   createPlan(@Body() dto: UpsertPlanDto) {

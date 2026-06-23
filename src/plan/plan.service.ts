@@ -36,6 +36,10 @@ export class PlanService {
     });
   }
 
+  async findAll() {
+    return this.db.plan.findMany();
+  }
+
   async findAllActive() {
     const key = `${this.cacheKey}active`;
     const cached = await this.cache.get(key);

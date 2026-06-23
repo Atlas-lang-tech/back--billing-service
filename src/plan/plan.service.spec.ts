@@ -121,6 +121,18 @@ describe('PlanService', () => {
     expect(db.plan.delete).not.toHaveBeenCalled();
   });
 
+  it('findAll returns every plan, active or not, bypassing the cache', async () => {
+    const { db, cache, service } = setup();
+    const hidden = { ...FREE, code: 'PRO', isActive: false };
+    db.plan.findMany.mockResolvedValue([FREE, hidden]);
+
+    const result = await service.findAll();
+
+    expect(result).toEqual([FREE, hidden]);
+    expect(db.plan.findMany).toHaveBeenCalledWith();
+    expect(cache.get).not.toHaveBeenCalled();
+  });
+
   it('findAllActive serves cache when present', async () => {
     const { db, cache, service } = setup();
     cache.get.mockResolvedValue(JSON.stringify([FREE]));
