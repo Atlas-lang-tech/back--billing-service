@@ -10,6 +10,7 @@ export const RoutingKey = {
   SubscriptionChanged: 'subscription.changed',
   PlanUpserted: 'plan.upserted',
   CoursePurchased: 'course.purchased',
+  PaymentSucceeded: 'billing.payment_succeeded',
 } as const;
 
 // Event payloads billing consumes.
@@ -44,4 +45,19 @@ export interface CoursePurchasedEvent {
   userId: string;
   courseId: number;
   purchasedAt: string;
+}
+
+/**
+ * Published after a successful paid charge. Consumed by mail-service to send the
+ * invoice/receipt email. `eventId` is the idempotency key; `amount` is in major
+ * units (e.g. 19.99).
+ */
+export interface PaymentSucceededEvent {
+  eventId: string;
+  userId: string;
+  email: string;
+  amount: number;
+  currency: string;
+  invoiceNumber: string;
+  paidAt: string;
 }

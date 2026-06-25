@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto';
 import {
   CoursePurchasedEvent,
   EVENTS_EXCHANGE,
+  PaymentSucceededEvent,
   PlanUpsertedEvent,
   RoutingKey,
   SubscriptionChangedEvent,
@@ -36,5 +37,9 @@ export class EventPublisher {
 
   coursePurchased(event: CoursePurchasedEvent): Promise<boolean> {
     return this.publish(RoutingKey.CoursePurchased, event);
+  }
+
+  paymentSucceeded(event: PaymentSucceededEvent): Promise<boolean> {
+    return this.publish(RoutingKey.PaymentSucceeded, event);
   }
 }

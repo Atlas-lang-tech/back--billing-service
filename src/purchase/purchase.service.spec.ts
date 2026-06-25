@@ -12,7 +12,10 @@ function setup(chargeOk = true) {
   const payment = {
     charge: jest.fn(async () => ({ ok: chargeOk, ref: 'r1' })),
   };
-  const events = { coursePurchased: jest.fn(async () => true) };
+  const events = {
+    coursePurchased: jest.fn(async () => true),
+    paymentSucceeded: jest.fn(async () => true),
+  };
   const service = new PurchaseService(db as any, payment as any, events as any);
   return { db, payment, events, service };
 }
@@ -51,7 +54,46 @@ describe('PurchaseService', () => {
       courseId: 1,
       purchasedAt: purchasedAt.toISOString(),
     });
+    // Без email у контексті лист-квитанцію не шлемо
+    expect(events.paymentSucceeded).not.toHaveBeenCalled();
     expect(result.id).toBe(1);
+  });
+
+  it('publishes billing.payment_succeeded when the user email is known', async () => {
+    const { db, events, service } = setup();
+    db.product.findUnique.mockResolvedValue(PAID_PRODUCT);
+    db.coursePurchase.findUnique.mockResolvedValue(null);
+    const purchasedAt = new Date('2026-01-01T00:00:00.000Z');
+    db.coursePurchase.create.mockResolvedValue({
+      id: 42,
+      userId: 'u1',
+      courseId: 1,
+      priceCents: 500,
+      purchasedAt,
+    });
+
+    await service.purchaseCourse(
+      { id: 'u1', role: 'USER', plan: 'FREE', email: 'buyer@example.com' },
+      1,
+    );
+
+    expect(events.paymentSucceeded).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: 'u1',
+        email: 'buyer@example.com',
+        amount: 5,
+        currency: 'USD',
+        invoiceNumber: '42',
+        paidAt: purchasedAt.toISOString(),
+      }),
+    );
+    // eventId — валідний UUID
+    const arg = (events.paymentSucceeded as jest.Mock).mock.calls[0][0] as {
+      eventId: string;
+    };
+    expect(arg.eventId).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
+    );
   });
 
   it('throws Conflict when the course is already owned', async () => {

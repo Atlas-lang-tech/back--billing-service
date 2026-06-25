@@ -3,8 +3,10 @@ import {
   ConflictException,
   Inject,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
 import { EventPublisher } from '../modules/messaging/event-publisher.service.js';
 import {
   PAYMENT_PROVIDER,
@@ -15,6 +17,8 @@ import type { UserContext } from '../common/auth/user-context.guard.js';
 
 @Injectable()
 export class PurchaseService {
+  private readonly logger = new Logger(PurchaseService.name);
+
   constructor(
     private db: PrismaService,
     @Inject(PAYMENT_PROVIDER) private payment: PaymentProvider,
@@ -59,6 +63,25 @@ export class PurchaseService {
       courseId,
       purchasedAt: purchase.purchasedAt.toISOString(),
     });
+
+    // Лист-квитанцію шлемо лише коли знаємо email (ForwardAuth проставляє
+    // X-User-Email). Якщо токен старий і email відсутній — пропускаємо, щоб не
+    // слати у mail-service подію, яка не пройде валідацію (потрапила б у DLX).
+    if (user.email) {
+      await this.events.paymentSucceeded({
+        eventId: randomUUID(),
+        userId: user.id,
+        email: user.email,
+        amount: product.priceCents / 100,
+        currency: product.currency,
+        invoiceNumber: String(purchase.id),
+        paidAt: purchase.purchasedAt.toISOString(),
+      });
+    } else {
+      this.logger.warn(
+        `No email in user context for ${user.id}; skipping payment receipt email`,
+      );
+    }
 
     return purchase;
   }
